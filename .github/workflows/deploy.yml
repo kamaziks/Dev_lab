@@ -12,15 +12,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up SSH
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Add known hosts
+      - name: Set up SSH key
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
       
       - name: PHP Lint
         run: |
@@ -32,12 +29,17 @@ jobs:
           cat > deploy.sh << 'EOL'
           #!/bin/bash
           
+          # Встановлення змінних із секретів
+          SSH_USER="${{ secrets.SSH_USERNAME }}"
+          SSH_HOST="${{ secrets.SSH_HOST }}"
+          SERVER_PASS="${{ secrets.SERVER_PASSPHRASE }}"
+          
           # Оновлення файлів на сервері
-          rsync -avz --delete --exclude '.git' --exclude '.github' --exclude 'node_modules' ./ ${{ secrets.DIGITALOCEAN_USER }}@${{ secrets.DIGITALOCEAN_HOST }}:/var/www/html/${{ secrets.PROJECT_DIRECTORY }}/
+          rsync -avz --delete --exclude '.git' --exclude '.github' --exclude 'node_modules' ./ ${SSH_USER}@${SSH_HOST}:/var/www/html/
           
           # Виконання міграцій бази даних або інших скриптів оновлення
-          ssh ${{ secrets.DIGITALOCEAN_USER }}@${{ secrets.DIGITALOCEAN_HOST }} << 'ENDSSH'
-          cd /var/www/html/${{ secrets.PROJECT_DIRECTORY }}
+          ssh ${SSH_USER}@${SSH_HOST} << 'ENDSSH'
+          cd /var/www/html
           
           # Налаштування прав доступу
           find . -type f -exec chmod 644 {} \;
@@ -70,7 +72,7 @@ jobs:
           fi
           
           # Перезапуск/перезавантаження Apache
-          sudo systemctl reload apache2
+          echo "${SERVER_PASS}" | sudo -S systemctl reload apache2
           
           echo "Deployment completed successfully!"
           ENDSSH
