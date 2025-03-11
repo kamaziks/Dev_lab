@@ -1,94 +1,24 @@
-name: Deploy to DigitalOcean LAMP Server
+name: Build & Deploy
 
 on:
   push:
-    branches: [ main ]  # Або master, залежно від назви вашої основної гілки
-  workflow_dispatch:  # Дозволяє запускати workflow вручну
-
+    branches: [ main ] 
+    
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
-      
-      - name: PHP Lint
-        run: |
-          # Перевірка синтаксису PHP файлів (опціонально)
-          find . -name "*.php" -type f -print0 | xargs -0 php -l
-      
-      - name: Create deployment script
-        run: |
-          cat > deploy.sh << 'EOL'
-          #!/bin/bash
-          
-          # Встановлення змінних із секретів
-          SSH_USER="${{ secrets.SSH_USERNAME }}"
-          SSH_HOST="${{ secrets.SSH_HOST }}"
-          SERVER_PASS="${{ secrets.SERVER_PASSPHRASE }}"
-          
-          # Оновлення файлів на сервері
-          rsync -avz --delete --exclude '.git' --exclude '.github' --exclude 'node_modules' ./ ${SSH_USER}@${SSH_HOST}:/var/www/html/
-          
-          # Виконання міграцій бази даних або інших скриптів оновлення
-          ssh ${SSH_USER}@${SSH_HOST} << 'ENDSSH'
-          cd /var/www/html
-          
-          # Налаштування прав доступу
-          find . -type f -exec chmod 644 {} \;
-          find . -type d -exec chmod 755 {} \;
-          
-          # Директорії, які потребують права запису
-          if [ -d "./storage" ]; then
-            chmod -R 775 ./storage
-            chown -R www-data:www-data ./storage
-          fi
-          
-          if [ -d "./cache" ]; then
-            chmod -R 775 ./cache
-            chown -R www-data:www-data ./cache
-          fi
-          
-          if [ -d "./uploads" ]; then
-            chmod -R 775 ./uploads
-            chown -R www-data:www-data ./uploads
-          fi
-          
-          # Виконання міграцій БД (якщо потрібно)
-          if [ -f "./migrations/migrate.php" ]; then
-            php ./migrations/migrate.php
-          fi
-          
-          # Очистка кешу (якщо потрібно)
-          if [ -f "./scripts/clear_cache.php" ]; then
-            php ./scripts/clear_cache.php
-          fi
-          
-          # Перезапуск/перезавантаження Apache
-          echo "${SERVER_PASS}" | sudo -S systemctl reload apache2
-          
-          echo "Deployment completed successfully!"
-          ENDSSH
-          EOL
-          
-          chmod +x deploy.sh
-      
-      - name: Deploy to LAMP server
-        run: ./deploy.sh
-        
-      - name: Notify about deployment
-        if: success()
-        run: |
-          echo "🚀 Deployment to DigitalOcean completed successfully!"
-          
-      - name: Notify about failure
-        if: failure()
-        run: |
-          echo "❌ Deployment to DigitalOcean failed."
+	deploy:
+	  runs-on: ubuntu-latest
+	  steps:
+		- name: Deploy app
+	  	  uses: appleboy/ssh-action@v0.1.2
+	  	  with:
+	  	    host: ${{secrets.SSH_HOST}}
+	  	    key: ${{secret.SSH_KEY}}
+	  	    username: ${{secret.SSH_USERNAME}}
+	  	    passphrase: ${{secret.SERVER_PASSPHRASE}}
+	  	    
+	  	    script: 
+	  	      mkdir NazarSit
+	  	      cd NazarSit
+	  	      touch somefile.txt
+	  	      git clone git@github.com:kamaziks/Dev_lab.git
+	  	      echo 'Deployment succesful to digital ocean!'
