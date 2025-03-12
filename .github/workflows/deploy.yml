@@ -1,3 +1,8 @@
+name: Build & Deploy
+on:
+  push:
+    branches:
+      - main
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -9,9 +14,9 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           username: ${{ secrets.SSH_USERNAME }}
           passphrase: ${{ secrets.SERVER_PASSPHRASE }}
-        script: |
-          mkdir NazarSit
-          cd NazarSit
-          touch somefile.txt
-          git clone git@github.com:kamaziks/Dev_lab.git
-          echo 'Deployment successful to DigitalOcean!'
+          script: |
+            mkdir NazarSit
+            cd NazarSit
+            touch somefile.txt
+            git clone git@github.com:kamaziks/Dev_lab.git
+            echo 'Deployment successful to DigitalOcean!'
